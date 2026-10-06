@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Attendance & Leave Approval System</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--tx:#1d2433;--mu:#6b7385;--bd:#e1e4ec;--pr:#3b5bdb;--ok:#2b8a3e;--bad:#c92a2a;--warn:#e67700;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12141c;--card:#1b1e29;--tx:#e8eaf2;--mu:#98a0b5;--bd:#2b3042;--pr:#7c97ff;--ok:#51cf66;--bad:#ff6b6b;--warn:#ffa94d}}
+:root[data-theme="dark"]{--bg:#12141c;--card:#1b1e29;--tx:#e8eaf2;--mu:#98a0b5;--bd:#2b3042;--pr:#7c97ff;--ok:#51cf66;--bad:#ff6b6b;--warn:#ffa94d}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--card);border-bottom:1px solid var(--bd)}
+h1{font-size:18px;margin:0}main{max-width:980px;margin:0 auto;padding:18px}
+select,input,textarea,button{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+button{cursor:pointer}button.p{background:var(--pr);color:#fff;border-color:var(--pr)}button.ok{background:var(--ok);color:#fff;border-color:var(--ok)}button.no{background:var(--bad);color:#fff;border-color:var(--bad)}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}nav button.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.big{font-size:30px;font-weight:700}.mu{color:var(--mu);font-size:13px}
+.bar{height:8px;background:var(--bd);border-radius:6px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--bd);white-space:nowrap}
+.b{padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid currentColor}
+.Approved,.Present{color:var(--ok)}.Rejected,.Absent{color:var(--bad)}.Pending,.Mentor{color:var(--warn)}.MentorApproved{color:var(--pr)}
+label{display:block;margin:10px 0 4px;font-weight:600}form input,form select,form textarea{width:100%}
+#msg{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));padding:10px 16px;border-radius:10px;color:#fff;display:none;max-width:90%}
+:root{--ol:#7048e8;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ol:#b197fc}}
+:root[data-theme="dark"]{--ol:#b197fc}
+.OnLeave{color:var(--ol)}.Cancelled{color:var(--mu)}.HOD{color:var(--pr)}
+.sub{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.sub button{border-radius:99px;padding:5px 14px}.sub button.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.stats{display:flex;gap:28px;flex-wrap:wrap}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+.chip{text-align:left;border-radius:10px;padding:8px 10px}.chip b{display:block;font:600 13px var(--mono);margin-bottom:2px}.chip.on{border-color:var(--pr);box-shadow:0 0 0 1px var(--pr)}
+.k{font:700 10px system-ui,sans-serif;margin-left:5px;padding:1px 5px;border-radius:4px;border:1px solid currentColor;vertical-align:middle}.k.pk{color:var(--warn)}.k.fk{color:var(--pr)}
+pre{margin:0;padding:12px;background:var(--bg);border:1px solid var(--bd);border-radius:8px;overflow-x:auto;font:12.5px/1.55 var(--mono)}
+.m,td.m,.dbt td{font-family:var(--mono);font-size:13px}.dbt td .b{font-family:system-ui,sans-serif}
+td.n{color:var(--mu);font-style:italic}
+h3.h{margin:22px 0 10px;font-size:13px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em}
+</style></head><body>
+<header><h1>🎓 Attendance &amp; Leave Approval System</h1>
+<div><label style="display:inline;margin-right:6px">Login as</label><select id="who"></select> <button id="rst" title="Reset demo data">Reset</button></div></header>
+<main><nav id="nav"></nav><div id="view"></div></main><div id="msg"></div>
+<script>
+const KEY='attleave_v1';
+const seed=()=>({
+ students:[{id:1,roll:'CS101',name:'Rahul Verma',mentor:2,dept:1},{id:2,roll:'CS102',name:'Sneha Reddy',mentor:2,dept:1},{id:3,roll:'BA201',name:'Arjun Mehta',mentor:3,dept:2}],
+ faculty:[{id:1,name:'Dr. Anita Rao (HOD)',hod:1,dept:1},{id:2,name:'Prof. Kiran Das (Mentor)',hod:0,dept:1},{id:3,name:'Dr. Meera Nair (HOD+Mentor)',hod:1,dept:2}],
+ courses:[{id:1,code:'CS301',name:'Database Management Systems'},{id:2,code:'CS302',name:'Operating Systems'}],
+ sessions:[[1,1,'2026-09-14','ER Modelling'],[2,1,'2026-09-15','Relational Algebra'],[3,1,'2026-09-16','Normalization'],[4,1,'2026-09-17','SQL Joins'],[5,2,'2026-09-14','Processes'],[6,2,'2026-09-15','Scheduling']].map(a=>({id:a[0],course:a[1],date:a[2],topic:a[3]})),
+ att:{'1-1':'Present','1-2':'Present','2-1':'Absent','2-2':'Present','3-1':'Absent','3-2':'Present','4-1':'Present','4-2':'Present','5-1':'Present','5-2':'Absent','6-1':'Absent','6-2':'Present'},
+ types:[{id:1,name:'Medical',max:10},{id:2,name:'Personal',max:5},{id:3,name:'Academic Event',max:7}],
+ leaves:[{id:1,student:1,type:1,from:'2026-09-15',to:'2026-09-16',reason:'Fever, doctor advised rest',status:'Pending',trail:[]}],log:[]});
+let db,user='s1',tab='';
+try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!db)db=seed();
+if(!db.log)db.log=[];
+for(const k in db.att)if(db.att[k]==='Late')db.att[k]='Present';
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const days=l=>Math.round((new Date(l.to)-new Date(l.from))/864e5)+1;
+const stu=id=>db.students.find(s=>s.id==id),fac=id=>db.faculty.find(f=>f.id==id),typ=id=>db.types.find(t=>t.id==id);
+const cls=s=>s.replace(' ','');
+function toast(t,ok=true){const m=$('msg');m.textContent=t;m.style.background=ok?'var(--ok)':'var(--bad)';m.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display='none',3200)}
+function pct(sid,cid){let a=0,c=0;db.sessions.filter(s=>!cid||s.course==cid).forEach(s=>{const v=db.att[s.id+'-'+sid];if(!v)return;if(v!=='On Leave')c++;if(v==='Present')a++});return{a,c,p:c?Math.round(1e4*a/c)/100:null}}
+const isF=()=>user[0]==='f',uid=()=>+user.slice(1);
+function tabs(){return isF()?[['mark','Mark Attendance'],['appr','Leave Approvals'],['rep','Attendance Report'],['db','Database']]:[['att','My Attendance'],['apply','Apply Leave'],['my','My Leaves'],['db','Database']]}
+function init(){
+ $('who').innerHTML='<optgroup label="Students">'+db.students.map(s=>`<option value="s${s.id}">${esc(s.name)} (${s.roll})</option>`).join('')+'</optgroup><optgroup label="Faculty">'+db.faculty.map(f=>`<option value="f${f.id}">${esc(f.name)}</option>`).join('')+'</optgroup>';
+ $('who').value=user;$('who').onchange=e=>{user=e.target.value;tab='';render()};
+ let armed=false,tm;
+ $('rst').onclick=()=>{
+  if(!armed){armed=true;$('rst').textContent='Click again to confirm';$('rst').className='no';
+   tm=setTimeout(()=>{armed=false;$('rst').textContent='Reset';$('rst').className=''},3000);return}
+  clearTimeout(tm);armed=false;$('rst').textContent='Reset';$('rst').className='';
+  db=seed();save();user='s1';$('who').value=user;tab='';render();toast('Demo data reset')};
+ render()}
+function render(){
+ const T=tabs();if(!T.some(t=>t[0]===tab))tab=T[0][0];
+ $('nav').innerHTML=T.map(t=>`<button class="${t[0]===tab?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('');
+ $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+ $('view').innerHTML=({att:vAtt,apply:vApply,my:vMy,mark:vMark,appr:vAppr,rep:vRep,db:vDb})[tab]();
+ bind()}
+function vAtt(){const s=stu(uid()),o=pct(s.id);
+ return `<div class="grid"><div class="card"><div class="mu">Overall attendance</div><div class="big" style="color:${o.p<75?'var(--bad)':'var(--ok)'}">${o.p??'–'}%</div><div class="mu">${o.p<75?'Shortage: below 75%':'Meets 75% requirement'}</div></div>`+
+ db.courses.map(c=>{const r=pct(s.id,c.id);return `<div class="card"><b>${c.code}</b><div class="mu">${esc(c.name)}</div><div class="big">${r.p??'–'}%</div><div class="mu">${r.a} attended / ${r.c} counted</div><div class="bar"><i style="width:${r.p||0}%;background:${r.p<75?'var(--bad)':'var(--ok)'}"></i></div></div>`}).join('')+
+ `</div><div class="card tw"><b>Session log</b><table><tr><th>Date</th><th>Course</th><th>Topic</th><th>Status</th></tr>`+
+ db.sessions.filter(x=>db.att[x.id+'-'+s.id]).map(x=>{const v=db.att[x.id+'-'+s.id];return `<tr><td>${x.date}</td><td>${db.courses.find(c=>c.id==x.course).code}</td><td>${esc(x.topic)}</td><td><span class="b ${cls(v)}">${v}</span></td></tr>`}).join('')+`</table></div>`}
+function vApply(){return `<div class="card"><b>New leave request</b><form id="lf"><label>Leave type</label><select name="t">${db.types.map(t=>`<option value="${t.id}">${t.name} (max ${t.max} days)</option>`).join('')}</select><label>From</label><input type="date" name="f" required><label>To</label><input type="date" name="to" required><label>Reason</label><textarea name="r" rows="3" required maxlength="255"></textarea><p><button class="p" type="submit">Submit request</button></p></form></div>`}
+function trail(l){return l.trail.length?l.trail.map(t=>`${t.level}: ${t.decision} by ${esc(fac(t.by).name)}${t.remarks?' ("'+esc(t.remarks)+'")':''}`).join('<br>'):'<span class="mu">No decisions yet</span>'}
+function vMy(){const L=db.leaves.filter(l=>l.student==uid());
+ return `<div class="card tw"><b>My leave requests</b>${L.length?`<table><tr><th>#</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Approval trail</th><th></th></tr>`+L.map(l=>`<tr><td>${l.id}</td><td>${typ(l.type).name}</td><td>${l.from}</td><td>${l.to}</td><td>${days(l)}</td><td><span class="b ${cls(l.status)}">${l.status}</span></td><td style="white-space:normal">${trail(l)}</td><td>${['Pending','Mentor Approved'].includes(l.status)?`<button data-cancel="${l.id}">Cancel</button>`:''}</td></tr>`).join('')+'</table>':'<p class="mu">No requests yet.</p>'}</div>`}
+function vMark(){const f=fac(uid());
+ const ss=db.sessions;return `<div class="card"><b>Mark attendance</b><label>Class session</label><select id="ms">${ss.map(s=>`<option value="${s.id}">${s.date} – ${db.courses.find(c=>c.id==s.course).code} – ${esc(s.topic)}</option>`).join('')}</select><div id="ml" class="tw"></div></div>`}
+function drawMark(){const sid=+$('ms').value,sess=db.sessions.find(s=>s.id==sid);
+ const en=db.students.filter(s=>s.dept===1);
+ $('ml').innerHTML='<table><tr><th>Roll</th><th>Student</th><th>Status</th></tr>'+en.map(s=>{const v=db.att[sid+'-'+s.id]||'Present';return `<tr><td>${s.roll}</td><td>${esc(s.name)}</td><td><select data-st="${s.id}">${['Present','Absent','On Leave'].map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}</select></td></tr>`}).join('')+'</table><p><button class="p" id="sv">Save attendance</button></p>';
+ $('sv').onclick=()=>{const sq=[];$('ml').querySelectorAll('[data-st]').forEach(e=>{const k=sid+'-'+e.dataset.st,old=db.att[k];db.att[k]=e.value;
+  if(old===undefined)sq.push('INSERT INTO attendance (session_id, student_id, status) VALUES ('+sid+', '+e.dataset.st+', '+q(e.value)+');');
+  else if(old!==e.value)sq.push('UPDATE attendance SET status = '+q(e.value)+' WHERE session_id = '+sid+' AND student_id = '+e.dataset.st+';')});
+  if(sq.length)logSql('Mark attendance',sq.join('\n'));else save();toast('Attendance saved')}}
+function queue(){const f=fac(uid());return db.leaves.map(l=>({l,s:stu(l.student)})).map(x=>{let lv=null;
+ if(x.l.status==='Pending'&&x.s.mentor===f.id)lv='Mentor';
+ if(x.l.status==='Mentor Approved'&&f.hod&&f.dept===x.s.dept)lv='HOD';
+ return{...x,lv}}).filter(x=>x.lv)}
+function vAppr(){const Q=queue();
+ return `<div class="card tw"><b>Awaiting your decision</b>${Q.length?`<table><tr><th>#</th><th>Student</th><th>Type</th><th>Dates</th><th>Days</th><th>Reason</th><th>Your level</th><th>Remarks</th><th></th></tr>`+Q.map(x=>`<tr><td>${x.l.id}</td><td>${esc(x.s.name)}</td><td>${typ(x.l.type).name}</td><td>${x.l.from} → ${x.l.to}</td><td>${days(x.l)}</td><td style="white-space:normal">${esc(x.l.reason)}</td><td><span class="b Mentor">${x.lv}</span></td><td><input id="rm${x.l.id}" placeholder="optional"></td><td><button class="ok" data-d="Approved" data-id="${x.l.id}" data-lv="${x.lv}">Approve</button> <button class="no" data-d="Rejected" data-id="${x.l.id}" data-lv="${x.lv}">Reject</button></td></tr>`).join('')+'</table>':'<p class="mu">Nothing pending for you.</p>'}</div>
+ <div class="card tw"><b>All leave requests</b><table><tr><th>#</th><th>Student</th><th>Dates</th><th>Status</th><th>Trail</th></tr>${db.leaves.map(l=>`<tr><td>${l.id}</td><td>${esc(stu(l.student).name)}</td><td>${l.from} → ${l.to}</td><td><span class="b ${cls(l.status)}">${l.status}</span></td><td style="white-space:normal">${trail(l)}</td></tr>`).join('')}</table></div>`}
+function vRep(){return `<div class="card tw"><b>Attendance report (shortage below 75% highlighted)</b><table><tr><th>Roll</th><th>Student</th>${db.courses.map(c=>`<th>${c.code}</th>`).join('')}<th>Overall</th></tr>`+db.students.filter(s=>s.dept===1).map(s=>{const cell=r=>`<td style="color:${r.p!==null&&r.p<75?'var(--bad)':'inherit'};font-weight:${r.p<75?700:400}">${r.p??'–'}%</td>`;return `<tr><td>${s.roll}</td><td>${esc(s.name)}</td>${db.courses.map(c=>cell(pct(s.id,c.id))).join('')}${cell(pct(s.id))}</tr>`}).join('')+'</table></div>'}
+function bind(){
+ if($('lf'))$('lf').onsubmit=e=>{e.preventDefault();const d=new FormData(e.target),t=+d.get('t'),from=d.get('f'),to=d.get('to'),rs=d.get('r').trim(),call='CALL sp_apply_leave('+uid()+', '+t+', '+q(from)+', '+q(to)+', '+q(rs)+');',deny=(m,why)=>{logSql('Apply leave',call+'\n-- rejected: '+why,false);return toast(m,false)};
+  if(to<from)return deny('To-date cannot be before from-date','CHECK (to_date >= from_date) violated');
+  const mine=db.leaves.filter(l=>l.student==uid()&&['Pending','Mentor Approved','Approved'].includes(l.status));
+  if(mine.some(l=>from<=l.to&&to>=l.from))return deny('Overlapping leave request exists','overlapping leave request found');
+  const req=days({from,to}),used=mine.filter(l=>l.type===t).reduce((a,l)=>a+days(l),0);
+  if(used+req>typ(t).max)return deny('Leave balance exceeded for this leave type','balance exceeded ('+used+' used + '+req+' requested > '+typ(t).max+' allowed)');
+  const nid=Math.max(0,...db.leaves.map(l=>l.id))+1;db.leaves.push({id:nid,student:uid(),type:t,from,to,reason:rs,status:'Pending',trail:[]});
+  logSql('Apply leave',call+'\n-- overlap and balance checks passed\nINSERT INTO leave_request (request_id, student_id, type_id, from_date, to_date, reason, status)\nVALUES ('+nid+', '+uid()+', '+t+', '+q(from)+', '+q(to)+', '+q(rs)+", 'Pending');");
+  tab='my';render();toast('Leave request submitted')};
+ document.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>{db.leaves.find(l=>l.id==b.dataset.cancel).status='Cancelled';logSql('Cancel leave',"UPDATE leave_request SET status = 'Cancelled' WHERE request_id = "+b.dataset.cancel+';');render();toast('Request cancelled')});
+ document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>decide(+b.dataset.id,b.dataset.lv,b.dataset.d));
+ if($('ms')){$('ms').onchange=drawMark;drawMark()}
+ document.querySelectorAll('[data-dbt]').forEach(b=>b.onclick=()=>{dbTab=b.dataset.dbt;render()});
+ document.querySelectorAll('[data-tbl]').forEach(b=>b.onclick=()=>{dbTable=b.dataset.tbl;render()})}
+function decide(id,lv,dec){const l=db.leaves.find(x=>x.id===id);
+ // mirrors DB triggers: Mentor first, HOD only after mentor approval
+ if(lv==='HOD'&&l.status!=='Mentor Approved')return toast('HOD can act only after mentor approval',false);
+ const rem=($('rm'+id)||{}).value||'';l.trail.push({level:lv,by:uid(),decision:dec,remarks:rem});let nOL=0;
+ if(dec==='Rejected')l.status='Rejected';else if(lv==='Mentor')l.status='Mentor Approved';
+ else{l.status='Approved';db.sessions.forEach(s=>{const k=s.id+'-'+l.student;if(db.att[k]&&s.date>=l.from&&s.date<=l.to){db.att[k]='On Leave';nOL++}})}
+ logDecision(l,lv,dec,rem,nOL);render();toast('Leave '+dec.toLowerCase()+(l.status==='Approved'?' – attendance updated to On Leave':''))}
+/* ===== Database showcase =====
+   Renders the app's live data as the relational tables of the project schema.
+   The SQL text below is documentation: results are computed in JavaScript from the same data.
+   If your real schema.sql differs, edit SCHEMA / INDEXES / VIEWS / REPORTS here. */
+let dbTab='tables',dbTable='student';
+const DEPTS=[{id:1,name:'Computer Science'},{id:2,name:'Business Administration'}];
+const q=s=>"'"+String(s).replace(/'/g,"''")+"'";
+const plain=n=>n.replace(/\s*\(.*\)\s*$/,'');
+const ay=d=>{const y=+d.slice(0,4),a=+d.slice(5,7)>=7?y:y-1;return a+'-'+String((a+1)%100).padStart(2,'0')};
+const F=s=>({pk:/\bPK\b/.test(s),ai:/\bAI\b/.test(s),nn:/\bNN\b/.test(s),uq:/\bUQ\b/.test(s),fk:(s.match(/FK (\S+)/)||[])[1],def:(s.match(/DEF (\S+)/)||[])[1]});
+const attRows=()=>Object.keys(db.att).map(k=>{const[a,b]=k.split('-').map(Number);return[a,b,db.att[k]]}).sort((x,y)=>x[0]-y[0]||x[1]-y[1]);
+function enrolRows(){const m={};attRows().forEach(([sid,st])=>{const s=db.sessions.find(x=>x.id===sid);if(s){const k=st+'-'+s.course;if(!m[k])m[k]=[st,s.course,ay(s.date)]}});return Object.values(m).sort((a,b)=>a[0]-b[0]||a[1]-b[1])}
+const SCHEMA=[
+ {t:'department',cols:[['dept_id','INT','PK AI'],['dept_name','VARCHAR(60)','NN UQ']],rows:()=>DEPTS.map(d=>[d.id,d.name])},
+ {t:'faculty',cols:[['faculty_id','INT','PK AI'],['name','VARCHAR(80)','NN'],['is_hod','TINYINT(1)','NN DEF 0'],['dept_id','INT','NN FK department.dept_id']],rows:()=>db.faculty.map(f=>[f.id,plain(f.name),f.hod,f.dept])},
+ {t:'student',cols:[['student_id','INT','PK AI'],['roll_no','VARCHAR(20)','NN UQ'],['name','VARCHAR(80)','NN'],['mentor_id','INT','NN FK faculty.faculty_id'],['dept_id','INT','NN FK department.dept_id']],rows:()=>db.students.map(s=>[s.id,s.roll,s.name,s.mentor,s.dept])},
+ {t:'course',cols:[['course_id','INT','PK AI'],['course_code','VARCHAR(10)','NN UQ'],['course_name','VARCHAR(80)','NN']],rows:()=>db.courses.map(c=>[c.id,c.code,c.name])},
+ {t:'enrollment',cols:[['student_id','INT','PK FK student.student_id'],['course_id','INT','PK FK course.course_id'],['academic_year','CHAR(7)','PK']],rows:enrolRows},
+ {t:'class_session',cols:[['session_id','INT','PK AI'],['course_id','INT','NN FK course.course_id'],['session_date','DATE','NN'],['topic','VARCHAR(100)','']],rows:()=>db.sessions.map(s=>[s.id,s.course,s.date,s.topic])},
+ {t:'attendance',cols:[['session_id','INT','PK FK class_session.session_id'],['student_id','INT','PK FK student.student_id'],['status',"ENUM('Present','Absent','On Leave')",'NN']],rows:attRows},
+ {t:'leave_type',cols:[['type_id','INT','PK AI'],['type_name','VARCHAR(40)','NN UQ'],['max_days_per_sem','INT','NN']],rows:()=>db.types.map(t=>[t.id,t.name,t.max])},
+ {t:'leave_request',cols:[['request_id','INT','PK AI'],['student_id','INT','NN FK student.student_id'],['type_id','INT','NN FK leave_type.type_id'],['from_date','DATE','NN'],['to_date','DATE','NN'],['reason','VARCHAR(255)','NN'],['status',"ENUM('Pending','Mentor Approved','Approved','Rejected','Cancelled')",'NN DEF \'Pending\'']],checks:['CONSTRAINT chk_leave_dates CHECK (to_date >= from_date)'],rows:()=>db.leaves.map(l=>[l.id,l.student,l.type,l.from,l.to,l.reason,l.status])},
+ {t:'leave_approval',cols:[['request_id','INT','PK FK leave_request.request_id'],['level',"ENUM('Mentor','HOD')",'PK'],['approver_id','INT','NN FK faculty.faculty_id'],['decision',"ENUM('Approved','Rejected')",'NN'],['remarks','VARCHAR(255)','']],rows:()=>db.leaves.flatMap(l=>l.trail.map(t=>[l.id,t.level,t.by,t.decision,t.remarks||null]))}
+];
+const INDEXES=['CREATE INDEX idx_attendance_student ON attendance (student_id);','CREATE INDEX idx_leave_student_status ON leave_request (student_id, status);','CREATE INDEX idx_session_date ON class_session (session_date);'];
+function ddl(T){
+ const L=T.cols.map(([n,ty,f])=>{const o=F(f);return '  '+n+' '+ty+(o.ai?' AUTO_INCREMENT':'')+(o.nn||o.pk?' NOT NULL':'')+(o.def!==undefined?' DEFAULT '+o.def:'')+(o.uq?' UNIQUE':'')});
+ L.push('  PRIMARY KEY ('+T.cols.filter(c=>F(c[2]).pk).map(c=>c[0]).join(', ')+')');
+ T.cols.forEach(([n,,f])=>{const r=F(f).fk;if(r){const[t,c]=r.split('.');L.push('  FOREIGN KEY ('+n+') REFERENCES '+t+'('+c+')')}});
+ (T.checks||[]).forEach(c=>L.push('  '+c));
+ return 'CREATE TABLE '+T.t+' (\n'+L.join(',\n')+'\n);'}
+
+const BADGE=['status','decision','level','awaiting'];
+function cellv(n,v){
+ if(v===null||v===undefined||v==='')return '<td class="n">NULL</td>';
+ if(BADGE.includes(n))return `<td><span class="b ${cls(String(v))}">${esc(v)}</span></td>`;
+ if(n==='attendance_pct')return `<td><b style="color:${v<75?'var(--bad)':'var(--ok)'}">${v}%</b></td>`;
+ const long=n==='reason'||n==='topic'||n==='remarks';
+ return `<td${long?' style="white-space:normal;min-width:170px"':''}>${esc(v)}</td>`}
+function grid(head,rows){
+ const H=head.map(h=>{const[n,ty,f]=Array.isArray(h)?h:[h,'',''],o=F(f);return `<th${ty?` title="${esc(ty)}${o.fk?' → '+o.fk:''}"`:''}>${n}${o.pk?'<span class="k pk">PK</span>':''}${o.fk?'<span class="k fk">FK</span>':''}</th>`}).join('');
+ const names=head.map(h=>Array.isArray(h)?h[0]:h);
+ return `<table><tr>${H}</tr>`+(rows.length?rows.map(r=>`<tr>${r.map((v,i)=>cellv(names[i],v)).join('')}</tr>`).join(''):`<tr><td colspan="${head.length}" class="n">Empty set</td></tr>`)+'</table>'}
+
+const VIEWS=[
+ {t:'v_attendance_percentage',d:'Attendance per student and course. On Leave sessions are left out of the denominator.',
+  sql:`CREATE VIEW v_attendance_percentage AS
+SELECT s.roll_no, s.name, c.course_code,
+       SUM(a.status = 'Present') AS attended,
+       SUM(a.status <> 'On Leave') AS counted,
+       ROUND(100 * SUM(a.status = 'Present')
+             / NULLIF(SUM(a.status <> 'On Leave'), 0), 2) AS attendance_pct
+FROM attendance a
+JOIN student s ON s.student_id = a.student_id
+JOIN class_session cs ON cs.session_id = a.session_id
+JOIN course c ON c.course_id = cs.course_id
+GROUP BY s.student_id, c.course_id;`,
+  run:()=>({head:['roll_no','name','course_code','attended','counted','attendance_pct'],rows:enrolRows().map(([st,co])=>{const s=stu(st),c=db.courses.find(x=>x.id==co),r=pct(st,co);return[s.roll,s.name,c.code,r.a,r.c,r.p]})})},
+ {t:'v_pending_leaves',d:'Requests still waiting for a decision, and who has to act next.',
+  sql:`CREATE VIEW v_pending_leaves AS
+SELECT lr.request_id, s.roll_no, s.name, lt.type_name,
+       lr.from_date, lr.to_date,
+       IF(lr.status = 'Pending', 'Mentor', 'HOD') AS awaiting,
+       m.name AS mentor
+FROM leave_request lr
+JOIN student s ON s.student_id = lr.student_id
+JOIN leave_type lt ON lt.type_id = lr.type_id
+JOIN faculty m ON m.faculty_id = s.mentor_id
+WHERE lr.status IN ('Pending', 'Mentor Approved');`,
+  run:()=>({head:['request_id','roll_no','name','type_name','from_date','to_date','awaiting','mentor'],rows:db.leaves.filter(l=>['Pending','Mentor Approved'].includes(l.status)).map(l=>{const s=stu(l.student);return[l.id,s.roll,s.name,typ(l.type).name,l.from,l.to,l.status==='Pending'?'Mentor':'HOD',plain(fac(s.mentor).name)]})})}
+];
+const REPORTS=[
+ {t:'Shortage list: students below 75%',
+  sql:`SELECT s.roll_no, s.name,
+       SUM(a.status = 'Present') AS attended,
+       SUM(a.status <> 'On Leave') AS counted,
+       ROUND(100 * SUM(a.status = 'Present')
+             / SUM(a.status <> 'On Leave'), 2) AS attendance_pct
+FROM attendance a
+JOIN student s ON s.student_id = a.student_id
+GROUP BY s.student_id
+HAVING attendance_pct < 75;`,
+  run:()=>({head:['roll_no','name','attended','counted','attendance_pct'],rows:db.students.map(s=>[s,pct(s.id)]).filter(([s,o])=>o.p!==null&&o.p<75).map(([s,o])=>[s.roll,s.name,o.a,o.c,o.p])})},
+ {t:'Approval trail per request',
+  sql:`SELECT la.request_id, s.name, la.level, f.name AS approver,
+       la.decision, la.remarks
+FROM leave_approval la
+JOIN leave_request lr ON lr.request_id = la.request_id
+JOIN student s ON s.student_id = lr.student_id
+JOIN faculty f ON f.faculty_id = la.approver_id
+ORDER BY la.request_id, FIELD(la.level, 'Mentor', 'HOD');`,
+  run:()=>({head:['request_id','name','level','approver','decision','remarks'],rows:db.leaves.flatMap(l=>l.trail.map(t=>[l.id,stu(l.student).name,t.level,plain(fac(t.by).name),t.decision,t.remarks||null]))})},
+ {t:'Leave days counted against each limit',
+  sql:`SELECT s.name, lt.type_name,
+       SUM(DATEDIFF(lr.to_date, lr.from_date) + 1) AS days_used,
+       lt.max_days_per_sem,
+       lt.max_days_per_sem
+         - SUM(DATEDIFF(lr.to_date, lr.from_date) + 1) AS remaining
+FROM leave_request lr
+JOIN student s ON s.student_id = lr.student_id
+JOIN leave_type lt ON lt.type_id = lr.type_id
+WHERE lr.status IN ('Pending', 'Mentor Approved', 'Approved')
+GROUP BY lr.student_id, lr.type_id
+ORDER BY lr.student_id, lr.type_id;`,
+  run:()=>{const g={};db.leaves.filter(l=>['Pending','Mentor Approved','Approved'].includes(l.status)).forEach(l=>{const k=l.student+'-'+l.type;g[k]=g[k]||{si:l.student,ti:l.type,d:0};g[k].d+=days(l)});
+   return{head:['name','type_name','days_used','max_days_per_sem','remaining'],rows:Object.values(g).sort((a,b)=>a.si-b.si||a.ti-b.ti).map(x=>[stu(x.si).name,typ(x.ti).name,x.d,typ(x.ti).max,typ(x.ti).max-x.d])}}},
+ {t:'Pending requests per mentor',
+  sql:`SELECT f.name AS mentor, COUNT(lr.request_id) AS pending_requests
+FROM faculty f
+JOIN student s ON s.mentor_id = f.faculty_id
+LEFT JOIN leave_request lr
+       ON lr.student_id = s.student_id AND lr.status = 'Pending'
+GROUP BY f.faculty_id
+ORDER BY f.faculty_id;`,
+  run:()=>({head:['mentor','pending_requests'],rows:[...new Set(db.students.map(s=>s.mentor))].sort((a,b)=>a-b).map(m=>[plain(fac(m).name),db.leaves.filter(l=>l.status==='Pending'&&stu(l.student).mentor===m).length])})},
+ {t:'Sessions turned to On Leave by approved leave',d:'Empty until a leave request has been approved by the HOD.',
+  sql:`SELECT s.name, c.course_code, cs.session_date, a.status
+FROM attendance a
+JOIN student s ON s.student_id = a.student_id
+JOIN class_session cs ON cs.session_id = a.session_id
+JOIN course c ON c.course_id = cs.course_id
+WHERE a.status = 'On Leave'
+ORDER BY s.name, cs.session_date;`,
+  run:()=>({head:['name','course_code','session_date','status'],rows:attRows().filter(r=>r[2]==='On Leave').map(([sid,st,v])=>{const se=db.sessions.find(x=>x.id===sid);return[stu(st).name,db.courses.find(c=>c.id==se.course).code,se.date,v]}).sort((a,b)=>a[0].localeCompare(b[0])||a[2].localeCompare(b[2]))})}
+];
+function qcard(x){const r=x.run();return `<div class="card"><b${x.t.startsWith('v_')?' class="m"':''}>${esc(x.t)}</b>${x.d?`<div class="mu" style="margin:2px 0 8px">${esc(x.d)}</div>`:'<div style="height:8px"></div>'}<pre>${esc(x.sql)}</pre><div class="tw dbt" style="margin-top:10px">${grid(r.head,r.rows)}</div><div class="mu" style="margin-top:6px">${r.rows.length?r.rows.length+' row'+(r.rows.length==1?'':'s')+' in set':'Empty set'}</div></div>`}
+
+function vDb(){
+ const rowsN=SCHEMA.reduce((a,T)=>a+T.rows().length,0),fks=SCHEMA.reduce((a,T)=>a+T.cols.filter(c=>F(c[2]).fk).length,0);
+ const sub=[['tables','Tables'],['schema','Schema'],['views','Views &amp; queries'],['log','Activity log']];
+ return `<div class="card"><div class="stats">${[[SCHEMA.length,'tables'],[rowsN,'rows'],[fks,'foreign keys'],[INDEXES.length,'indexes'],[VIEWS.length,'views']].map(x=>`<div><div class="big">${x[0]}</div><div class="mu">${x[1]}</div></div>`).join('')}</div><div class="mu" style="margin-top:10px">This app keeps its data in the browser and models it as the relational tables of the project schema. Everything here updates as you apply, approve and mark attendance.</div></div>`+
+ `<div class="sub">${sub.map(s=>`<button data-dbt="${s[0]}" class="${s[0]===dbTab?'on':''}">${s[1]}${s[0]==='log'&&db.log.length?' ('+db.log.length+')':''}</button>`).join('')}</div>`+({tables:dbTables,schema:dbSchema,views:dbViews,log:dbLog})[dbTab]()}
+function dbTables(){
+ const T=SCHEMA.find(x=>x.t===dbTable)||SCHEMA[0],rows=T.rows();
+ return `<div class="chips">${SCHEMA.map(x=>`<button class="chip ${x.t===T.t?'on':''}" data-tbl="${x.t}"><b>${x.t}</b><span class="mu">${x.rows().length} row${x.rows().length==1?'':'s'}</span></button>`).join('')}</div>`+
+ `<div class="card tw dbt"><b class="m">${T.t}</b> <span class="mu">${rows.length} row${rows.length==1?'':'s'}</span>${grid(T.cols,rows)}</div>`}
+function dbSchema(){
+ const rel=[];SCHEMA.forEach(T=>T.cols.forEach(c=>{const o=F(c[2]);if(o.fk)rel.push([T.t+'.'+c[0],o.fk])}));
+ return `<div class="card tw dbt"><b>Foreign keys</b><table><tr><th>Column</th><th></th><th>References</th></tr>${rel.map(r=>`<tr><td>${r[0]}</td><td>→</td><td>${r[1]}</td></tr>`).join('')}</table></div>`+
+ `<div class="card"><b>CREATE TABLE statements</b><div class="mu" style="margin:2px 0 10px">Generated from the same definitions the Tables tab uses.</div>${SCHEMA.map(T=>`<pre style="margin-bottom:10px">${esc(ddl(T))}</pre>`).join('')}<pre>${esc(INDEXES.join('\n'))}</pre></div>`}
+function dbViews(){return '<h3 class="h">Views</h3>'+VIEWS.map(qcard).join('')+'<h3 class="h">Report queries</h3>'+REPORTS.map(qcard).join('')}
+function dbLog(){
+ const note='<p class="mu" style="margin:0 0 10px">Equivalent SQL for each action taken in the app, newest first.</p>';
+ if(!db.log.length)return note+'<div class="card"><p class="mu" style="margin:0">No operations yet. Apply for leave, approve or reject a request, or save attendance, and the SQL shows up here.</p></div>';
+ return note+db.log.slice().reverse().map(e=>`<div class="card"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span class="b ${e.ok?'Approved':'Rejected'}">${e.ok?'OK':'Rejected'}</span><b>${esc(e.a)}</b><span class="mu">${esc(e.who)} · ${new Date(e.t).toLocaleTimeString()}</span></div><pre>${esc(e.sql)}</pre></div>`).join('')}
+function logSql(a,sql,ok=true){db.log.push({t:Date.now(),who:isF()?plain(fac(uid()).name):stu(uid()).name,a,sql,ok});if(db.log.length>100)db.log.shift();save()}
+function logDecision(l,lv,dec,rem,n){
+ let s='INSERT INTO leave_approval (request_id, level, approver_id, decision, remarks)\nVALUES ('+l.id+', '+q(lv)+', '+uid()+', '+q(dec)+', '+(rem?q(rem):'NULL')+');\n-- trg_approval_before_insert: Mentor to HOD order checked\n-- trg_approval_after_insert fires:\nUPDATE leave_request SET status = '+q(l.status)+' WHERE request_id = '+l.id+';';
+ if(l.status==='Approved')s+="\nUPDATE attendance SET status = 'On Leave'\nWHERE student_id = "+l.student+"\n  AND session_id IN (SELECT session_id FROM class_session\n                     WHERE session_date BETWEEN "+q(l.from)+' AND '+q(l.to)+');\n-- '+n+' attendance row'+(n==1?'':'s')+' set to On Leave';
+ logSql('Leave decision ('+lv+')',s)}
+
+init();
+</script></body></html>
